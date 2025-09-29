@@ -1,291 +1,249 @@
-let editor;
+let Editor;
 let Proposals = [];
-let currentTab = null;
-let tabs = [];
-
-const luaIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #58A6FF;">
-    <path d="M12 2L13.09 8.26L19 9L13.09 9.74L12 16L10.91 9.74L5 9L10.91 8.26L12 2Z"/>
-    <circle cx="8" cy="17" r="2" opacity="0.7"/>
-    <circle cx="16" cy="17" r="2" opacity="0.7"/>
-</svg>`;
+let CurrentTab = null;
+let Tabs = [];
 
 class Tab {
-    constructor(title, content = '') {
-        this.id = 'tab-' + Math.random().toString(36).substr(2, 9);
-        this.title = title;
-        this.content = content;
-        this.element = null;
-        this.isDirty = false;
-        this.isNew = true;
+    constructor(Title, Content = '') {
+        this.Id = 'tab-' + Math.random().toString(36).substr(2, 9);
+        this.Title = Title;
+        this.Content = Content;
+        this.Element = null;
+        this.IsDirty = false;
+        this.IsNew = true;
     }
 }
 
-function saveTabs() {
-    try {
-        const tabsData = tabs.map(tab => ({
-            id: tab.id,
-            title: tab.title,
-            content: tab.content,
-            isDirty: tab.isDirty
-        }));
-        localStorage.setItem('unixEditorTabs', JSON.stringify(tabsData));
-    } catch (error) {
-        console.warn('Failed to save tabs to localStorage:', error);
-    }
-}
-
-function loadTabs() {
-    try {
-        const savedTabs = localStorage.getItem('unixEditorTabs');
-        if (savedTabs) {
-            const tabsData = JSON.parse(savedTabs);
-            tabsData.forEach(tabData => {
-                addTab(tabData.title, tabData.content, tabData.id, tabData.isDirty);
-            });
-        }
-    } catch (error) {
-        console.warn('Failed to load tabs from localStorage:', error);
-    }
-
-    if (tabs.length === 0) {
-        addTab('main.lua');
-    }
-}
-
-function makeEditable(titleElement, tab) {
-    titleElement.contentEditable = true;
-    titleElement.classList.add('editing');
-    titleElement.focus();
+function MakeEditable(TitleElement, TabObj) {
+    TitleElement.contentEditable = true;
+    TitleElement.classList.add('editing');
+    TitleElement.focus();
     
-    const range = document.createRange();
-    range.selectNodeContents(titleElement);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+    const Range = document.createRange();
+    Range.selectNodeContents(TitleElement);
+    const Sel = window.getSelection();
+    Sel.removeAllRanges();
+    Sel.addRange(Range);
 
-    function finishEditing() {
-        titleElement.contentEditable = false;
-        titleElement.classList.remove('editing');
-        const newTitle = titleElement.textContent.trim();
-        if (newTitle && newTitle !== tab.title) {
-            tab.title = newTitle;
-            saveTabs();
+    function FinishEditing() {
+        TitleElement.contentEditable = false;
+        TitleElement.classList.remove('editing');
+        const NewTitle = TitleElement.textContent.trim();
+        if (NewTitle && NewTitle !== TabObj.Title) {
+            TabObj.Title = NewTitle;
         } else {
-            titleElement.textContent = tab.title;
+            TitleElement.textContent = TabObj.Title;
         }
     }
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            finishEditing();
+    const HandleKeyDown = (E) => {
+        if (E.key === 'Enter') {
+            E.preventDefault();
+            FinishEditing();
         }
-        if (e.key === 'Escape') {
-            titleElement.textContent = tab.title;
-            finishEditing();
+        if (E.key === 'Escape') {
+            TitleElement.textContent = TabObj.Title;
+            FinishEditing();
         }
     };
 
-    titleElement.onblur = finishEditing;
-    titleElement.onkeydown = handleKeyDown;
+    TitleElement.onblur = FinishEditing;
+    TitleElement.onkeydown = HandleKeyDown;
 }
 
-function createTabElement(tab) {
-    const tabElement = document.createElement('div');
-    tabElement.className = 'tab';
-    if (tab.isNew) {
-        tabElement.classList.add('new');
-        tab.isNew = false;
+function CreateTabElement(TabObj) {
+    const TabElement = document.createElement('div');
+    TabElement.className = 'tab';
+    if (TabObj.IsNew) {
+        TabElement.classList.add('new');
+        TabObj.IsNew = false;
     }
-    tabElement.setAttribute('data-tab-id', tab.id);
+    TabElement.setAttribute('data-tab-id', TabObj.Id);
     
-    const iconElement = document.createElement('div');
-    iconElement.className = 'tab-icon';
-    iconElement.innerHTML = luaIcon;
+    const IconElement = document.createElement('div');
+    IconElement.className = 'tab-icon';
+    const IconImg = document.createElement('img');
+    IconImg.src = './luaicon.png';
+    IconImg.alt = 'Lua';
+    IconElement.appendChild(IconImg);
     
-    const titleElement = document.createElement('div');
-    titleElement.className = 'tab-title';
-    titleElement.textContent = tab.title + (tab.isDirty ? ' •' : '');
+    const TitleElement = document.createElement('div');
+    TitleElement.className = 'tab-title';
+    TitleElement.textContent = TabObj.Title + (TabObj.IsDirty ? ' •' : '');
     
-    titleElement.ondblclick = (e) => {
-        e.stopPropagation();
-        makeEditable(titleElement, tab);
+    TitleElement.ondblclick = (E) => {
+        E.stopPropagation();
+        MakeEditable(TitleElement, TabObj);
     };
     
-    const closeButton = document.createElement('div');
-    closeButton.className = 'tab-close';
-    closeButton.innerHTML = '×';
-    closeButton.title = 'Close tab';
-    closeButton.onclick = (e) => {
-        e.stopPropagation();
-        removeTab(tab.id);
+    const CloseButton = document.createElement('div');
+    CloseButton.className = 'tab-close';
+    CloseButton.innerHTML = '×';
+    CloseButton.title = 'Close tab';
+    CloseButton.onclick = (E) => {
+        E.stopPropagation();
+        RemoveTab(TabObj.Id);
     };
     
-    tabElement.appendChild(iconElement);
-    tabElement.appendChild(titleElement);
-    if (tabs.length > 1 || tab.isDirty) {
-        tabElement.appendChild(closeButton);
+    TabElement.appendChild(IconElement);
+    TabElement.appendChild(TitleElement);
+    if (Tabs.length > 1 || TabObj.IsDirty) {
+        TabElement.appendChild(CloseButton);
     }
     
-    tabElement.onclick = () => switchTab(tab.id);
+    TabElement.onclick = () => SwitchTab(TabObj.Id);
     
-    return tabElement;
+    return TabElement;
 }
 
-function createNewTabButton() {
-    const newTabButton = document.createElement('div');
-    newTabButton.className = 'tab new-tab';
-    newTabButton.innerHTML = '+';
-    newTabButton.title = 'New tab';
-    newTabButton.onclick = () => {
-        const tabCount = tabs.length + 1;
-        const newTab = addTab(`script${tabCount}.lua`);
+function CreateNewTabButton() {
+    const NewTabButton = document.createElement('div');
+    NewTabButton.className = 'tab new-tab';
+    NewTabButton.innerHTML = '+';
+    NewTabButton.title = 'New tab';
+    NewTabButton.onclick = () => {
+        const TabCount = Tabs.length + 1;
+        const NewTab = AddTab(`script${TabCount}.lua`);
 
         setTimeout(() => {
-            const titleElement = newTab.element.querySelector('.tab-title');
-            if (titleElement) makeEditable(titleElement, newTab);
+            const TitleElement = NewTab.Element.querySelector('.tab-title');
+            if (TitleElement) MakeEditable(TitleElement, NewTab);
         }, 100);
     };
-    return newTabButton;
+    return NewTabButton;
 }
 
-function addTab(title, content = '', id = null, isDirty = false) {
-    const defaultText = `print("Hello, World!)`;
+function AddTab(Title, Content = '', Id = null, IsDirty = false) {
+    const DefaultText = `print("Hello, World!")`;
     
-    if (!content.trim()) {
-        content = defaultText;
+    if (!Content.trim()) {
+        Content = DefaultText;
     }
     
-    const tab = new Tab(title, content);
-    if (id) tab.id = id;
-    tab.isDirty = isDirty;
-    tabs.push(tab);
+    const TabObj = new Tab(Title, Content);
+    if (Id) TabObj.Id = Id;
+    TabObj.IsDirty = IsDirty;
+    Tabs.push(TabObj);
     
-    const tabsContainer = document.getElementById('tabs-container');
-    const newTabButton = tabsContainer.querySelector('.new-tab');
+    const TabsContainer = document.getElementById('tabs-container');
+    const NewTabButton = TabsContainer.querySelector('.new-tab');
     
-    tab.element = createTabElement(tab);
+    TabObj.Element = CreateTabElement(TabObj);
     
-    if (newTabButton) {
-        tabsContainer.insertBefore(tab.element, newTabButton);
+    if (NewTabButton) {
+        TabsContainer.insertBefore(TabObj.Element, NewTabButton);
     } else {
-        tabsContainer.appendChild(tab.element);
-        tabsContainer.appendChild(createNewTabButton());
+        TabsContainer.appendChild(TabObj.Element);
+        TabsContainer.appendChild(CreateNewTabButton());
     }
     
-    switchTab(tab.id);
-    saveTabs();
-    return tab;
+    SwitchTab(TabObj.Id);
+    return TabObj;
 }
 
-function removeTab(tabId) {
-    const tabIndex = tabs.findIndex(t => t.id === tabId);
-    if (tabIndex === -1) return;
+function RemoveTab(TabId) {
+    const TabIndex = Tabs.findIndex(T => T.Id === TabId);
+    if (TabIndex === -1) return;
     
-    const tab = tabs[tabIndex];
+    const TabObj = Tabs[TabIndex];
 
-    if (tabs.length <= 1) {
-        tab.content = '';
-        tab.isDirty = false;
-        editor.setValue('');
-        saveTabs();
+    if (Tabs.length <= 1) {
+        TabObj.Content = '';
+        TabObj.IsDirty = false;
+        Editor.setValue('');
         return;
     }
 
-    if (tab.isDirty) {
-        if (!confirm(`Tab "${tab.title}" has unsaved changes. Close anyway?`)) {
+    if (TabObj.IsDirty) {
+        if (!confirm(`Tab "${TabObj.Title}" has unsaved changes. Close anyway?`)) {
             return;
         }
     }
     
-    tab.element.classList.add('removing');
+    TabObj.Element.classList.add('removing');
     
     setTimeout(() => {
-        tabs.splice(tabIndex, 1);
-        tab.element.remove();
+        Tabs.splice(TabIndex, 1);
+        TabObj.Element.remove();
         
-        if (currentTab === tabId) {
-            const newIndex = Math.min(tabIndex, tabs.length - 1);
-            switchTab(tabs[newIndex].id);
+        if (CurrentTab === TabId) {
+            const NewIndex = Math.min(TabIndex, Tabs.length - 1);
+            SwitchTab(Tabs[NewIndex].Id);
         }
-        saveTabs();
-    }, 250);
+    }, 200);
 }
 
-function switchTab(tabId) {
-    const tab = tabs.find(t => t.id === tabId);
-    if (!tab) return;
+function SwitchTab(TabId) {
+    const TabObj = Tabs.find(T => T.Id === TabId);
+    if (!TabObj) return;
 
-    if (currentTab && currentTab !== tabId) {
-        const oldTab = tabs.find(t => t.id === currentTab);
-        if (oldTab) {
-            oldTab.content = editor.getValue();
-            saveTabs();
+    if (CurrentTab && CurrentTab !== TabId) {
+        const OldTab = Tabs.find(T => T.Id === CurrentTab);
+        if (OldTab) {
+            OldTab.Content = Editor.getValue();
         }
     }
 
-    tabs.forEach(t => {
-        if (t.element) {
-            t.element.classList.remove('active');
+    Tabs.forEach(T => {
+        if (T.Element) {
+            T.Element.classList.remove('active');
         }
     });
 
-    if (tab.element) {
-        tab.element.classList.add('active');
+    if (TabObj.Element) {
+        TabObj.Element.classList.add('active');
     }
 
-    const contentToSet = tab.content || `print("Hello, World");`;
-    editor.setValue(contentToSet);
+    const ContentToSet = TabObj.Content || `print("Hello, World!")`;
+    Editor.setValue(ContentToSet);
     
-    currentTab = tabId;
-
-    document.title = `Unix - ${tab.title}`;
+    CurrentTab = TabId;
+    document.title = `Unix - ${TabObj.Title}`;
 }
 
-function updateTabTitle(tab, isDirty = null) {
-    if (!tab.element) return;
+function UpdateTabTitle(TabObj, IsDirty = null) {
+    if (!TabObj.Element) return;
     
-    if (isDirty !== null) {
-        tab.isDirty = isDirty;
+    if (IsDirty !== null) {
+        TabObj.IsDirty = IsDirty;
     }
     
-    const titleElement = tab.element.querySelector('.tab-title');
-    if (titleElement && !titleElement.classList.contains('editing')) {
-        titleElement.textContent = tab.title + (tab.isDirty ? ' •' : '');
+    const TitleElement = TabObj.Element.querySelector('.tab-title');
+    if (TitleElement && !TitleElement.classList.contains('editing')) {
+        TitleElement.textContent = TabObj.Title + (TabObj.IsDirty ? ' •' : '');
     }
 }
 
-function setupAutosave() {
-    let saveTimeout;
-    let lastContent = '';
+function SetupAutosave() {
+    let SaveTimeout;
+    let LastContent = '';
     
-    editor.onDidChangeModelContent(() => {
-        clearTimeout(saveTimeout);
+    Editor.onDidChangeModelContent(() => {
+        clearTimeout(SaveTimeout);
         
-        const currentContent = editor.getValue();
-        const hasChanges = currentContent !== lastContent;
+        const CurrentContent = Editor.getValue();
+        const HasChanges = CurrentContent !== LastContent;
         
-        if (currentTab && hasChanges) {
-            const tab = tabs.find(t => t.id === currentTab);
-            if (tab) {
-                updateTabTitle(tab, true);
+        if (CurrentTab && HasChanges) {
+            const TabObj = Tabs.find(T => T.Id === CurrentTab);
+            if (TabObj) {
+                UpdateTabTitle(TabObj, true);
             }
         }
         
-        saveTimeout = setTimeout(() => {
-            if (currentTab) {
-                const tab = tabs.find(t => t.id === currentTab);
-                if (tab) {
-                    tab.content = currentContent;
-                    lastContent = currentContent;
-                    saveTabs();
+        SaveTimeout = setTimeout(() => {
+            if (CurrentTab) {
+                const TabObj = Tabs.find(T => T.Id === CurrentTab);
+                if (TabObj) {
+                    TabObj.Content = CurrentContent;
+                    LastContent = CurrentContent;
                 }
             }
         }, 500);
     });
 }
 
-var enableAntiSkid, disableAntiSkid, SetText, ShowMinimap, HideMinimap;
+var EnableAntiSkid, DisableAntiSkid, SetText, ShowMinimap, HideMinimap;
 var EnableAutoComplete, DisableAutoComplete, GetText, AddIntellisense, Refresh;
 
 require.config({
@@ -295,13 +253,13 @@ require.config({
 });
 
 require(['vs/editor/editor.main'], function () {
-    function getDependencyProposals() {
+    function GetDependencyProposals() {
         return Proposals;
     }
 
     monaco.languages.registerCompletionItemProvider('lua', {
-        provideCompletionItems: function (model, position) {
-            return getDependencyProposals();
+        provideCompletionItems: function (Model, Position) {
+            return GetDependencyProposals();
         },
         triggerCharacters: ['.', ':', '"'],
     });
@@ -310,33 +268,33 @@ require(['vs/editor/editor.main'], function () {
         base: 'vs-dark',
         inherit: true,
         colors: {
-            "editor.background": '#0B0F14',
-            "editor.foreground": '#F0F6FF',
+            "editor.background": '#0D1117',
+            "editor.foreground": '#F0F6FC',
             "editorLineNumber.foreground": '#6E7681',
             "editorLineNumber.activeForeground": '#8B949E',
-            "editor.lineHighlightBackground": '#111722',
+            "editor.lineHighlightBackground": '#161B22',
             "editor.selectionBackground": '#2858A6FF',
-            "editor.inactiveSelectionBackground": '#1A2332',
+            "editor.inactiveSelectionBackground": '#21262D',
             "editorCursor.foreground": '#58A6FF',
             "scrollbarSlider.background": '#8B949E80',
             "scrollbarSlider.hoverBackground": '#C9D1D9A0',
-            "editorWidget.background": '#1A2332',
+            "editorWidget.background": '#21262D',
             "editorWidget.border": '#30363D',
-            "editorSuggestWidget.background": '#1A2332',
+            "editorSuggestWidget.background": '#21262D',
             "editorSuggestWidget.border": '#58A6FF',
         },
         rules: [
             { token: 'comment', foreground: '8B949E', fontStyle: 'italic' },
-            { token: 'keyword', foreground: 'A5A3FF', fontStyle: 'bold' },
-            { token: 'string', foreground: '3FB950' },
-            { token: 'number', foreground: 'F99157' },
-            { token: 'identifier', foreground: 'F0F6FF' },
+            { token: 'keyword', foreground: 'A855F7', fontStyle: 'bold' },
+            { token: 'string', foreground: '56D364' },
+            { token: 'number', foreground: 'FFA657' },
+            { token: 'identifier', foreground: 'F0F6FC' },
             { token: 'global', foreground: '58A6FF', fontStyle: 'bold' },
             { token: 'method', foreground: 'FFA1DC' },
         ]
     });
 
-    editor = monaco.editor.create(document.getElementById('container'), {
+    Editor = monaco.editor.create(document.getElementById('container'), {
         language: 'lua',
         theme: 'unix-theme',
         acceptSuggestionOnEnter: "smart",
@@ -353,27 +311,27 @@ require(['vs/editor/editor.main'], function () {
         fontLigatures: true,
         formatOnPaste: true,
         showDeprecated: true,
-        fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+        fontFamily: 'Consolas, Monaco, monospace',
         fontSize: 14,
-        lineHeight: 24,
-        padding: { top: 20, bottom: 20 },
+        lineHeight: 22,
+        padding: { top: 16, bottom: 16 },
         scrollbar: {
             vertical: 'auto',
             horizontal: 'auto',
             useShadows: true,
-            verticalScrollbarSize: 12,
-            horizontalScrollbarSize: 12,
+            verticalScrollbarSize: 10,
+            horizontalScrollbarSize: 10,
         },
         suggest: {
             snippetsPreventQuickSuggestions: false,
         }
     });
 
-    loadTabs();
-    setupAutosave();
+    AddTab('main.lua');
+    SetupAutosave();
 
     EnableAutoComplete = function() {
-        editor.updateOptions({
+        Editor.updateOptions({
             suggestOnTriggerCharacters: true,
             acceptSuggestionOnEnter: "smart",
             wordBasedSuggestions: "on"
@@ -381,7 +339,7 @@ require(['vs/editor/editor.main'], function () {
     };
 
     DisableAutoComplete = function() {
-        editor.updateOptions({
+        Editor.updateOptions({
             suggestOnTriggerCharacters: false,
             acceptSuggestionOnEnter: "off",
             wordBasedSuggestions: "off"
@@ -389,189 +347,167 @@ require(['vs/editor/editor.main'], function () {
     };
 
     ShowMinimap = function() {
-        editor.updateOptions({ minimap: { enabled: true } });
+        Editor.updateOptions({ minimap: { enabled: true } });
     };
 
     HideMinimap = function() {
-        editor.updateOptions({ minimap: { enabled: false } });
+        Editor.updateOptions({ minimap: { enabled: false } });
     };
 
-    function handleover() {
+    function HandleOver() {
         document.body.style.filter = "blur(0px)";
     }
     
-    function handleleave() {
+    function HandleLeave() {
         document.body.style.filter = "blur(3px)";
     }
     
-    enableAntiSkid = function() {
+    EnableAntiSkid = function() {
         document.body.style.filter = "blur(3px)";
-        document.body.addEventListener("mouseover", handleover);
-        document.body.addEventListener("mouseleave", handleleave);
+        document.body.addEventListener("mouseover", HandleOver);
+        document.body.addEventListener("mouseleave", HandleLeave);
     };
     
-    disableAntiSkid = function() {
+    DisableAntiSkid = function() {
         document.body.style.filter = "blur(0px)";
-        document.body.removeEventListener("mouseover", handleover, false);
-        document.body.removeEventListener("mouseleave", handleleave, false);
+        document.body.removeEventListener("mouseover", HandleOver, false);
+        document.body.removeEventListener("mouseleave", HandleLeave, false);
     };
-
-    editor.onDidChangeModelContent(function (e) {
-        try {
-            if (typeof luaparse !== 'undefined') {
-                luaparse.parse(editor.getValue());
-                monaco.editor.setModelMarkers(editor.getModel(), 'luaparse', []);
-            }
-        } catch(err) {
-            if (typeof luaparse !== 'undefined') {
-                monaco.editor.setModelMarkers(editor.getModel(), 'luaparse', [{
-                    startLineNumber: err.line || 1,
-                    startColumn: err.column || 1,
-                    endLineNumber: err.line || 1,
-                    endColumn: err.column || 1,
-                    message: err.message || 'Syntax error',
-                    severity: 8
-                }]);
-            }
-        }
-    });
 
     GetText = function() {
-        return editor.getValue();
+        return Editor.getValue();
     };
 
-    SetText = function(text) {
-        editor.setValue(text || '');
-        if (currentTab) {
-            const tab = tabs.find(t => t.id === currentTab);
-            if (tab) {
-                tab.content = text || '';
-                updateTabTitle(tab, false);
-                saveTabs();
+    SetText = function(Text) {
+        Editor.setValue(Text || '');
+        if (CurrentTab) {
+            const TabObj = Tabs.find(T => T.Id === CurrentTab);
+            if (TabObj) {
+                TabObj.Content = Text || '';
+                UpdateTabTitle(TabObj, false);
             }
         }
     };
 
-    AddIntellisense = function(label, kind, detail, insertText) {
-        let completionKind;
-        switch (kind) {
-            case "Class": completionKind = monaco.languages.CompletionItemKind.Class; break;
-            case "Color": completionKind = monaco.languages.CompletionItemKind.Color; break;
-            case "Constructor": completionKind = monaco.languages.CompletionItemKind.Constructor; break;
-            case "Enum": completionKind = monaco.languages.CompletionItemKind.Enum; break;
-            case "Field": completionKind = monaco.languages.CompletionItemKind.Field; break;
-            case "File": completionKind = monaco.languages.CompletionItemKind.File; break;
-            case "Folder": completionKind = monaco.languages.CompletionItemKind.Folder; break;
-            case "Function": completionKind = monaco.languages.CompletionItemKind.Function; break;
-            case "Interface": completionKind = monaco.languages.CompletionItemKind.Interface; break;
-            case "Keyword": completionKind = monaco.languages.CompletionItemKind.Keyword; break;
-            case "Method": completionKind = monaco.languages.CompletionItemKind.Method; break;
-            case "Module": completionKind = monaco.languages.CompletionItemKind.Module; break;
-            case "Property": completionKind = monaco.languages.CompletionItemKind.Property; break;
-            case "Reference": completionKind = monaco.languages.CompletionItemKind.Reference; break;
-            case "Snippet": completionKind = monaco.languages.CompletionItemKind.Snippet; break;
-            case "Text": completionKind = monaco.languages.CompletionItemKind.Text; break;
-            case "Unit": completionKind = monaco.languages.CompletionItemKind.Unit; break;
-            case "Value": completionKind = monaco.languages.CompletionItemKind.Value; break;
-            case "Variable": completionKind = monaco.languages.CompletionItemKind.Variable; break;
-            default: completionKind = monaco.languages.CompletionItemKind.Text; break;
+    AddIntellisense = function(Label, Kind, Detail, InsertText) {
+        let CompletionKind;
+        switch (Kind) {
+            case "Class": CompletionKind = monaco.languages.CompletionItemKind.Class; break;
+            case "Color": CompletionKind = monaco.languages.CompletionItemKind.Color; break;
+            case "Constructor": CompletionKind = monaco.languages.CompletionItemKind.Constructor; break;
+            case "Enum": CompletionKind = monaco.languages.CompletionItemKind.Enum; break;
+            case "Field": CompletionKind = monaco.languages.CompletionItemKind.Field; break;
+            case "File": CompletionKind = monaco.languages.CompletionItemKind.File; break;
+            case "Folder": CompletionKind = monaco.languages.CompletionItemKind.Folder; break;
+            case "Function": CompletionKind = monaco.languages.CompletionItemKind.Function; break;
+            case "Interface": CompletionKind = monaco.languages.CompletionItemKind.Interface; break;
+            case "Keyword": CompletionKind = monaco.languages.CompletionItemKind.Keyword; break;
+            case "Method": CompletionKind = monaco.languages.CompletionItemKind.Method; break;
+            case "Module": CompletionKind = monaco.languages.CompletionItemKind.Module; break;
+            case "Property": CompletionKind = monaco.languages.CompletionItemKind.Property; break;
+            case "Reference": CompletionKind = monaco.languages.CompletionItemKind.Reference; break;
+            case "Snippet": CompletionKind = monaco.languages.CompletionItemKind.Snippet; break;
+            case "Text": CompletionKind = monaco.languages.CompletionItemKind.Text; break;
+            case "Unit": CompletionKind = monaco.languages.CompletionItemKind.Unit; break;
+            case "Value": CompletionKind = monaco.languages.CompletionItemKind.Value; break;
+            case "Variable": CompletionKind = monaco.languages.CompletionItemKind.Variable; break;
+            default: CompletionKind = monaco.languages.CompletionItemKind.Text; break;
         }
 
         Proposals.push({
-            label: label,
-            kind: completionKind,
-            detail: detail,
-            insertText: insertText || label,
-            documentation: detail
+            label: Label,
+            kind: CompletionKind,
+            detail: Detail,
+            insertText: InsertText || Label,
+            documentation: Detail
         });
     };
 
     Refresh = function() {
-        const text = GetText();
+        const Text = GetText();
         SetText("");
-        editor.trigger('keyboard', 'type', { text: text });
+        Editor.trigger('keyboard', 'type', { text: Text });
     };
 
     window.addEventListener('resize', function() {
-        editor.layout();
+        Editor.layout();
     });
 
-    async function loadIntellisenseData() {
+    async function LoadIntellisenseData() {
         try {
-            const response = await fetch('https://raw.githubusercontent.com/iceycold3/monaco/refs/heads/main/lib.json');
-            const docs = await response.json();
+            const Response = await fetch('https://raw.githubusercontent.com/iceycold3/monaco/refs/heads/main/lib.json');
+            const Docs = await Response.json();
 
-            for (const prop in docs) {
-                for (const item in docs[prop]) {
-                    const document = docs[prop][item];
-                    AddIntellisense(document.label, document.type, document.description, document.insert);
+            for (const Prop in Docs) {
+                for (const Item in Docs[Prop]) {
+                    const Document = Docs[Prop][Item];
+                    AddIntellisense(Document.label, Document.type, Document.description, Document.insert);
                 }
             }
 
-            const luaKeywords = ["_G", "_VERSION", "Enum", "game", "plugin", "shared", "script", "workspace", 
+            const LuaKeywords = ["_G", "_VERSION", "Enum", "game", "plugin", "shared", "script", "workspace", 
                                 "DebuggerManager", "elapsedTime", "LoadLibrary", "PluginManager", "settings", 
                                 "tick", "time", "typeof", "UserSettings"];
-            luaKeywords.forEach(keyword => AddIntellisense(keyword, "Keyword", keyword, keyword));
+            LuaKeywords.forEach(Keyword => AddIntellisense(Keyword, "Keyword", Keyword, Keyword));
 
-            const luaControlFlow = ["and", "break", "do", "else", "elseif", "end", "false", "for", "function", 
+            const LuaControlFlow = ["and", "break", "do", "else", "elseif", "end", "false", "for", "function", 
                                    "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", 
                                    "until", "while"];
-            luaControlFlow.forEach(keyword => AddIntellisense(keyword, "Variable", keyword, keyword));
+            LuaControlFlow.forEach(Keyword => AddIntellisense(Keyword, "Variable", Keyword, Keyword));
 
-            const luaMethods = ["math.abs", "math.acos", "math.asin", "math.atan", "math.atan2", "math.ceil", 
+            const LuaMethods = ["math.abs", "math.acos", "math.asin", "math.atan", "math.atan2", "math.ceil", 
                                "math.cos", "math.cosh", "math.deg", "math.exp", "math.floor", "math.fmod", 
                                "math.frexp", "math.huge", "math.ldexp", "math.log", "math.max", "math.min", 
                                "math.modf", "math.pi", "math.pow", "math.rad", "math.random", "math.randomseed", 
                                "math.sin", "math.sinh", "math.sqrt", "math.tan", "math.tanh", "table.concat", 
                                "table.foreach", "table.foreachi", "table.sort", "table.insert", "table.remove"];
-            luaMethods.forEach(method => AddIntellisense(method, "Method", method, method));
+            LuaMethods.forEach(Method => AddIntellisense(Method, "Method", Method, Method));
 
-            const luaClasses = ["Drawing", "debug", "Instance", "Color3", "Vector3", "Vector2", "BrickColor", 
+            const LuaClasses = ["Drawing", "debug", "Instance", "Color3", "Vector3", "Vector2", "BrickColor", 
                                "math", "table", "string", "coroutine", "Humanoid", "ClickDetector", "LocalScript", 
                                "Model", "ModuleScript", "Mouse", "Part", "Player", "Script", "Tool", "RunService", 
                                "UserInputService", "Workspace"];
-            luaClasses.forEach(cls => AddIntellisense(cls, "Class", cls, cls));
+            LuaClasses.forEach(Cls => AddIntellisense(Cls, "Class", Cls, Cls));
 
-            const luaFunctions = ["print", "warn", "wait", "info", "printidentity", "assert", "collectgarbage", 
+            const LuaFunctions = ["print", "warn", "wait", "info", "printidentity", "assert", "collectgarbage", 
                                  "error", "getfenv", "getmetatable", "setmetatable", "ipairs", "loadfile", 
                                  "loadstring", "newproxy", "next", "pairs", "pcall", "spawn", "rawequal", 
                                  "rawget", "rawset", "select", "tonumber", "tostring", "type", "unpack", "xpcall", 
                                  "delay", "stats"];
-            luaFunctions.forEach(func => AddIntellisense(func, "Function", func, func));
+            LuaFunctions.forEach(Func => AddIntellisense(Func, "Function", Func, Func));
 
-        } catch (error) {
-            console.warn('Failed to load intellisense data:', error);
+        } catch (Error) {
+            console.warn('Failed to load intellisense data:', Error);
         }
     }
 
-    loadIntellisenseData();
+    LoadIntellisenseData();
 
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
-        if (currentTab) {
-            const tab = tabs.find(t => t.id === currentTab);
-            if (tab) {
-                updateTabTitle(tab, false);
-                saveTabs();
+    Editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
+        if (CurrentTab) {
+            const TabObj = Tabs.find(T => T.Id === CurrentTab);
+            if (TabObj) {
+                UpdateTabTitle(TabObj, false);
             }
         }
     });
 
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, function() {
-        const tabCount = tabs.length + 1;
-        addTab(`script${tabCount}.lua`);
+    Editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, function() {
+        const TabCount = Tabs.length + 1;
+        AddTab(`script${TabCount}.lua`);
     });
 
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, function() {
-        if (currentTab) {
-            removeTab(currentTab);
+    Editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, function() {
+        if (CurrentTab) {
+            RemoveTab(CurrentTab);
         }
     });
 
-    let tabSwitchIndex = 0;
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Tab, function() {
-        if (tabs.length > 1) {
-            tabSwitchIndex = (tabSwitchIndex + 1) % tabs.length;
-            switchTab(tabs[tabSwitchIndex].id);
+    let TabSwitchIndex = 0;
+    Editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Tab, function() {
+        if (Tabs.length > 1) {
+            TabSwitchIndex = (TabSwitchIndex + 1) % Tabs.length;
+            SwitchTab(Tabs[TabSwitchIndex].Id);
         }
     });
 
